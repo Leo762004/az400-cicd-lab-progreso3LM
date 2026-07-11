@@ -1,0 +1,164 @@
+# Pipeline de integración continua
+# Estudiante: Leonardo Muñoz
+# Identificador: student-03
+
+name: CI-Leonardo-Munoz-Student-03-$(Date:yyyyMMdd).$(Rev:r)
+
+trigger:
+  branches:
+    include:
+      - feature/student-03
+
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  studentId: 'student-03'
+  componentFile: 'az400-cicd-lab/site/components/student-03.html'
+  zipFile: '$(Build.ArtifactStagingDirectory)/sitio-web-leonardo-munoz-student-03.zip'
+  artifactName: 'sitio-web-leonardo-munoz-student-03'
+
+steps:
+  - checkout: self
+    displayName: 'Descargar repositorio de Leonardo Muñoz'
+
+  - bash: |
+      set -e
+
+      echo "============================================"
+      echo "VALIDACIÓN DE ARCHIVOS - LEONARDO MUÑOZ"
+      echo "============================================"
+
+      required_files=(
+        "az400-cicd-lab/site/index.html"
+        "az400-cicd-lab/site/css/styles.css"
+        "az400-cicd-lab/site/js/app.js"
+        "az400-cicd-lab/site/components/student-03.html"
+      )
+
+      for file in "${required_files[@]}"; do
+        echo "Revisando: $file"
+
+        if [ ! -f "$file" ]; then
+          echo "ERROR: No se encontró el archivo $file."
+          exit 1
+        fi
+
+        if [ ! -s "$file" ]; then
+          echo "ERROR: El archivo $file está vacío."
+          exit 1
+        fi
+
+        echo "OK: $file existe y no está vacío."
+      done
+
+      echo "OK: Todos los archivos obligatorios son válidos."
+    displayName: 'Validar archivos obligatorios de student-03'
+
+  - bash: |
+      set -e
+
+      COMPONENT="az400-cicd-lab/site/components/student-03.html"
+      STUDENT="student-03"
+
+      echo "============================================"
+      echo "VALIDACIÓN DEL COMPONENTE STUDENT-03"
+      echo "ESTUDIANTE: LEONARDO MUÑOZ"
+      echo "============================================"
+
+      article_count=$(grep -Eio '<article([[:space:]][^>]*)?>' "$COMPONENT" | wc -l)
+      closing_article_count=$(grep -Eio '</article[[:space:]]*>' "$COMPONENT" | wc -l)
+      h2_count=$(grep -Eio '<h2([[:space:]][^>]*)?>' "$COMPONENT" | wc -l)
+      closing_h2_count=$(grep -Eio '</h2[[:space:]]*>' "$COMPONENT" | wc -l)
+      paragraph_count=$(grep -Eio '<p([[:space:]][^>]*)?>' "$COMPONENT" | wc -l)
+      script_count=$(grep -Eio '<script([[:space:]][^>]*)?>' "$COMPONENT" | wc -l)
+
+      echo "Article encontrados: $article_count"
+      echo "Cierres article: $closing_article_count"
+      echo "H2 encontrados: $h2_count"
+      echo "Cierres H2: $closing_h2_count"
+      echo "Párrafos encontrados: $paragraph_count"
+      echo "Scripts encontrados: $script_count"
+
+      if [ "$article_count" -ne 1 ]; then
+        echo "ERROR: El componente debe contener exactamente un elemento article."
+        exit 1
+      fi
+
+      if [ "$closing_article_count" -ne 1 ]; then
+        echo "ERROR: El componente no contiene exactamente un cierre </article>."
+        exit 1
+      fi
+
+      if [ "$h2_count" -lt 1 ]; then
+        echo "ERROR: El componente no contiene un título h2."
+        exit 1
+      fi
+
+      if [ "$closing_h2_count" -lt 1 ]; then
+        echo "ERROR: El componente no contiene el cierre </h2>."
+        exit 1
+      fi
+
+      if [ "$paragraph_count" -lt 1 ]; then
+        echo "ERROR: El componente no contiene al menos un párrafo."
+        exit 1
+      fi
+
+      if ! grep -Fqi "$STUDENT" "$COMPONENT"; then
+        echo "ERROR: El identificador no corresponde a student-03."
+        exit 1
+      fi
+
+      if [ "$script_count" -gt 0 ]; then
+        echo "ERROR: El componente contiene una etiqueta script."
+        exit 1
+      fi
+
+      echo "OK: El componente student-03 superó todas las validaciones."
+    displayName: 'Validar componente student-03 de Leonardo Muñoz'
+
+  - task: ArchiveFiles@2
+    displayName: 'Crear ZIP de Leonardo Muñoz'
+    inputs:
+      rootFolderOrFile: '$(Build.SourcesDirectory)/az400-cicd-lab/site'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(zipFile)'
+      replaceExistingArchive: true
+
+  - bash: |
+      set -e
+
+      echo "============================================"
+      echo "REVISIÓN DEL ARCHIVO ZIP"
+      echo "============================================"
+
+      if [ ! -f "$(zipFile)" ]; then
+        echo "ERROR: No se generó el archivo ZIP."
+        exit 1
+      fi
+
+      unzip -l "$(zipFile)"
+
+      if ! unzip -l "$(zipFile)" | grep -q "index.html"; then
+        echo "ERROR: El ZIP no contiene index.html."
+        exit 1
+      fi
+
+      if ! unzip -l "$(zipFile)" | grep -q "components/student-03.html"; then
+        echo "ERROR: El ZIP no contiene student-03.html."
+        exit 1
+      fi
+
+      echo "OK: El ZIP fue generado correctamente."
+    displayName: 'Revisar ZIP de Leonardo Muñoz'
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publicar artefacto de Leonardo Muñoz'
+    inputs:
+      targetPath: '$(zipFile)'
+      artifact: '$(artifactName)'
+      publishLocation: 'pipeline'
